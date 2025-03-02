@@ -1,0 +1,7 @@
+numpy
+pandas
+Pillow
+tqdm
+transformers
+datasets
+vllm # for utility only
