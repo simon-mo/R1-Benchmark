@@ -38,18 +38,20 @@ serve-vllm:
       --tensor-parallel-size 8 \
       --trust-remote-code \
       --load-format dummy \
-      --disable-log-requests
+      --disable-log-requests \
+      --no-enable-prefix-caching
 
 serve-sgl:
-  SGL_ENABLE_JIT_DEEPGEMM=0 \
+  # SGL doesn't support load-format dummy for R1,
+  # so you do need to download the model first.
+  SGL_ENABLE_JIT_DEEPGEMM=1 \
   just uvx-sgl python -m sglang.launch_server \
     --model /home/vllm-dev/DeepSeek-R1 \
     --trust-remote-code \
     --enable-torch-compile \
     --torch-compile-max-bs 8 \
     --enable-flashinfer-mla \
-    --tp 8 \
-    --enable-mixed-chunk
+    --tp 8
 
 ensure-results-dir:
   mkdir -p results
