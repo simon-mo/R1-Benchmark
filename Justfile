@@ -5,7 +5,7 @@ list:
 uvx-vllm +args:
   uvx --with setuptools \
     --with vllm --extra-index-url https://wheels.vllm.ai/nightly \
-    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2.post1/flashinfer_python-0.2.2.post1+cu124torch2.5-cp38-abi3-linux_x86_64.whl \
+    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2.post1/flashinfer_python-0.2.2.post1+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
     {{args}}
 
 # Recipe for running uvx with sglang configuration
@@ -14,7 +14,7 @@ uvx-sgl +args:
   uvx --with setuptools \
     --with 'transformers<4.49.0' \
     --with 'sglang[all]>=0.4.3.post2' \
-    --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
+    --find-links https://flashinfer.ai/whl/cu124/torch2.6/flashinfer-python \
     {{args}}
 
 list-versions:
@@ -41,30 +41,43 @@ serve-vllm:
       --disable-log-requests
 
 serve-sgl:
+  SGL_ENABLE_JIT_DEEPGEMM=0 \
   just uvx-sgl python -m sglang.launch_server \
     --model /home/vllm-dev/DeepSeek-R1 \
     --trust-remote-code \
+    --enable-torch-compile \
+    --torch-compile-max-bs 8 \
+    --enable-flashinfer-mla \
     --tp 8 \
-    --enable-flashinfer-mla
+    --enable-mixed-chunk
 
-run-scenario backend="vllm" input_len="100" output_len="100" port="8000":
+ensure-results-dir:
+  mkdir -p results
+
+run-scenario backend_name="vllm" input_len="100" output_len="100": ensure-results-dir
+  #!/usr/bin/env bash
+  if [ "{{backend_name}}" = "sgl" ]; then
+    PORT=30000
+  else
+    PORT=8000
+  fi
   uvx --with-requirements requirements-benchmark.txt \
     python vllm-benchmarks/benchmarks/benchmark_serving.py \
     --model /home/vllm-dev/DeepSeek-R1 \
-    --port {{port}} \
+    --port ${PORT} \
     --dataset-name random --ignore-eos \
     --num-prompts 50 \
     --request-rate 10 \
     --random-input-len {{input_len}} --random-output-len {{output_len}} \
     --save-result \
     --result-dir results \
-    --result-filename {{backend}}-{{input_len}}-{{output_len}}.json
+    --result-filename {{backend_name}}-{{input_len}}-{{output_len}}.json
 
-run-sweeps backend="vllm" port="8000":
-  just run-scenario {{backend}} "1000" "1000" {{port}}
-  just run-scenario {{backend}} "5000" "1000" {{port}}
-  just run-scenario {{backend}} "10000" "1000" {{port}}
-  just run-scenario {{backend}} "32000" "1000" {{port}}
+run-sweeps backend_name="vllm":
+  just run-scenario {{backend_name}} "1000" "1000"
+  just run-scenario {{backend_name}} "5000" "1000"
+  just run-scenario {{backend_name}} "10000" "1000"
+  just run-scenario {{backend_name}} "32000" "1000"
 
 show-results:
   uvx --with rich --with pandas python extract-result.py
