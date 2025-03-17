@@ -66,8 +66,9 @@ serve-sgl:
     --enable-torch-compile \
     --torch-compile-max-bs 8 \
     --enable-flashinfer-mla \
-    --tp 8 \
-    --disable-radix-cache
+    --tp 8
+  # We should disable radix cache but https://github.com/sgl-project/sglang/issues/4298
+  # --disable-radix-cache
 
 serve-sgl-qwq-32b:
   just uvx-sgl python -m sglang.launch_server \
