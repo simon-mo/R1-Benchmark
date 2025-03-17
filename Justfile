@@ -66,19 +66,22 @@ serve-sgl:
     --enable-torch-compile \
     --torch-compile-max-bs 8 \
     --enable-flashinfer-mla \
-    --tp 8
+    --tp 8 \
+    --disable-radix-cache
 
 serve-sgl-qwq-32b:
   just uvx-sgl python -m sglang.launch_server \
     --model Qwen/QwQ-32B \
     --trust-remote-code \
-    --tp 4
+    --tp 4 \
+    --disable-radix-cache
 
 serve-sgl-llama-8b:
   just uvx-sgl python -m sglang.launch_server \
     --model deepseek-ai/DeepSeek-R1-Distill-Llama-8B \
     --trust-remote-code \
-    --tp 1
+    --tp 1 \
+    --disable-radix-cache
 
 ensure-results-dir:
   mkdir -p results
