@@ -23,18 +23,21 @@ just clone-vllm-benchmarks
 ```
 
 4. Run the benchmark
-Run the server via `just serve-vllm` or `just serve-sgl`.
-Run the benchmark via `just run-sweeps` or `just run-sweeps sgl`.
+Run the server via `just serve-vllm` or `just serve-sgl`. Run the benchmark via `just run-sweeps` or `just run-sweeps sgl`.
 
 * Note that for SGL, you need to download the model first because it cannot run with dummy format.
   Please modify the `Justfile` to point to the correct path.
+
+* For TP4 (Qwen/QwQ-32B), you need to use `just serve-vllm-qwq-32b` and `just serve-sgl-qwq-32b`. With `just run-sweeps vllm 'Qwen/QwQ-32B'` and `just run-sweeps sgl 'Qwen/QwQ-32B'`, you can get the results.
+
+* For TP1 (Llama-3.1-8B), you need to use `just serve-vllm-llama-8b` and `just serve-sgl-llama-8b`. With `just run-sweeps vllm 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B'` and `just run-sweeps sgl 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B'`, you can get the results.
 
 5. Aggregate the results
 ```bash
 just show-results
 ```
 
-As of March 16, 2025, the results are as follows:
+As of March 16, 2025, the results are as follows for R1:
 ```
     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
@@ -45,4 +48,17 @@ As of March 16, 2025, the results are as follows:
 │        10000 │          1000 │  747.04 │ 419.65 │ 78.0% │
 │        32000 │          1000 │  104.88 │ 112.04 │ -6.4% │
 └──────────────┴───────────────┴─────────┴────────┴───────┘
+```
+
+For QwQ-32B:
+```
+     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
+┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃     SGL ┃  Gap % ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
+│         1000 │          1000 │ 3015.40 │ 1956.47 │  54.1% │
+│         5000 │          1000 │ 1850.57 │ 2213.61 │ -16.4% │
+│        10000 │          1000 │ 1151.89 │ 1678.07 │ -31.4% │
+│        32000 │          1000 │  193.66 │  452.54 │ -57.2% │
+└──────────────┴───────────────┴─────────┴─────────┴────────┘
 ```
