@@ -1,21 +1,92 @@
+UV_PYTHON_VERSION := "3.11"
+
+# Common arguments for all serving commands
+COMMON_SERVE_ARGS := "--trust-remote-code"
+
+# VLLM-specific arguments and env
+VLLM_SERVE_ARGS := COMMON_SERVE_ARGS + "  --load-format dummy --no-enable-prefix-caching --disable-log-requests"
+VLLM_ENV := "VLLM_USE_FLASHINFER_SAMPLER=1"
+
+# SGL-specific arguments and env
+SGL_ENV := "SGL_ENABLE_JIT_DEEPGEMM=1"
+SGL_SERVE_ARGS := COMMON_SERVE_ARGS + " --enable-torch-compile --torch-compile-max-bs 8 --enable-flashinfer-mla --disable-radix-cache"
+
+# Model configurations
+DEEPSEEK_R1_PATH := "/home/vllm-dev/DeepSeek-R1"
+DEEPSEEK_R1_TP := "8"
+
+QWQ_32B_PATH := "Qwen/QwQ-32B"
+QWQ_32B_TP := "2"
+
+LLAMA_8B_PATH := "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+LLAMA_8B_TP := "1"
+
+# Port configurations
+VLLM_PORT := "8000"
+SGL_PORT := "30000"
+
 list:
   just --list
 
 # Recipe for running uvx with vllm configuration
 uvx-vllm +args:
-  uvx --with setuptools \
-    --with vllm --extra-index-url https://wheels.vllm.ai/nightly \
+  UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
+    --with 'vllm==0.8.1' \
     --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2.post1/flashinfer_python-0.2.2.post1+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
     {{args}}
 
 # Recipe for running uvx with sglang configuration
 uvx-sgl +args:
   #!/usr/bin/env bash
-  uvx --with setuptools \
-    --with 'transformers<4.49.0' \
-    --with 'sglang[all]>=0.4.3.post2' \
+  UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
+    --with 'sglang[all]==0.4.4.post1' \
     --find-links https://flashinfer.ai/whl/cu124/torch2.6/flashinfer-python \
     {{args}}
+
+# Base recipes for serving
+_serve-vllm model_path tp="1":
+  {{VLLM_ENV}} just uvx-vllm vllm serve {{model_path}} \
+    --tensor-parallel-size {{tp}} \
+    {{VLLM_SERVE_ARGS}}
+
+_serve-sgl model_path tp="1":
+  #!/usr/bin/env bash
+  # Add load-format dummy for all models except DeepSeek-R1
+  if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
+    SGL_ARGS="{{SGL_SERVE_ARGS}}"
+  else
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --load-format dummy"
+  fi
+  {{SGL_ENV}} just uvx-sgl python -m sglang.launch_server \
+    --model {{model_path}} \
+    --tp {{tp}} \
+    ${SGL_ARGS}
+
+# Unified serve command for both backends
+serve backend="vllm" model="deepseek-r1":
+  #!/usr/bin/env bash
+  # Validate backend
+  if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
+    echo "Invalid backend. Available backends: vllm, sgl"
+    exit 1
+  fi
+
+  # Get model configuration and serve
+  case "{{model}}" in
+    "deepseek-r1")
+      just _serve-{{backend}} {{DEEPSEEK_R1_PATH}} {{DEEPSEEK_R1_TP}}
+      ;;
+    "qwq-32b")
+      just _serve-{{backend}} {{QWQ_32B_PATH}} {{QWQ_32B_TP}}
+      ;;
+    "llama-8b")
+      just _serve-{{backend}} {{LLAMA_8B_PATH}} {{LLAMA_8B_TP}}
+      ;;
+    *)
+      echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b"
+      exit 1
+      ;;
+  esac
 
 list-versions:
   just uvx-vllm vllm --version
@@ -32,85 +103,65 @@ clone-vllm-benchmarks target_dir="vllm-benchmarks":
   echo "benchmarks/**" > .git/info/sparse-checkout
   git checkout
 
-serve-vllm:
-  VLLM_USE_V1=1 VLLM_ATTENTION_BACKEND=FLASHMLA VLLM_USE_FLASHINFER_SAMPLER=1 \
-    just uvx-vllm vllm serve /home/vllm-dev/DeepSeek-R1 \
-      --tensor-parallel-size 8 \
-      --trust-remote-code \
-      --load-format dummy \
-      --disable-log-requests \
-      --no-enable-prefix-caching
+ensure-results-dir model:
+  mkdir -p results/{{model}}
 
-serve-vllm-qwq-32b:
-  VLLM_USE_FLASHINFER_SAMPLER=1 \
-    just uvx-vllm vllm serve Qwen/QwQ-32B \
-      --tensor-parallel-size 4 \
-      --trust-remote-code \
-      --disable-log-requests \
-      --no-enable-prefix-caching
-
-serve-vllm-llama-8b:
-  just uvx-vllm vllm serve deepseek-ai/DeepSeek-R1-Distill-Llama-8B \
-    --tensor-parallel-size 1 \
-    --trust-remote-code \
-    --disable-log-requests \
-    --no-enable-prefix-caching
-
-serve-sgl:
-  # SGL doesn't support load-format dummy for R1,
-  # so you do need to download the model first.
-  SGL_ENABLE_JIT_DEEPGEMM=1 \
-  just uvx-sgl python -m sglang.launch_server \
-    --model /home/vllm-dev/DeepSeek-R1 \
-    --trust-remote-code \
-    --enable-torch-compile \
-    --torch-compile-max-bs 8 \
-    --enable-flashinfer-mla \
-    --tp 8
-  # We should disable radix cache but https://github.com/sgl-project/sglang/issues/4298
-  # --disable-radix-cache
-
-serve-sgl-qwq-32b:
-  just uvx-sgl python -m sglang.launch_server \
-    --model Qwen/QwQ-32B \
-    --trust-remote-code \
-    --tp 4 \
-    --disable-radix-cache
-
-serve-sgl-llama-8b:
-  just uvx-sgl python -m sglang.launch_server \
-    --model deepseek-ai/DeepSeek-R1-Distill-Llama-8B \
-    --trust-remote-code \
-    --tp 1 \
-    --disable-radix-cache
-
-ensure-results-dir:
-  mkdir -p results
-
-run-scenario backend_name="vllm" input_len="100" output_len="100" model_name="/home/vllm-dev/DeepSeek-R1": ensure-results-dir
+# Run a single benchmark scenario
+run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
   #!/usr/bin/env bash
-  if [ "{{backend_name}}" = "sgl" ]; then
-    PORT=30000
-  else
-    PORT=8000
+  set -ex
+
+  just ensure-results-dir {{model}}
+
+  # Validate backend
+  if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
+    echo "Invalid backend. Available backends: vllm, sgl"
+    exit 1
   fi
+
+  # Set port based on backend
+  PORT=$([[ "{{backend}}" = "sgl" ]] && echo "{{SGL_PORT}}" || echo "{{VLLM_PORT}}")
+
+  # Get model path based on alias
+  case "{{model}}" in
+    "deepseek-r1")
+      MODEL_PATH={{DEEPSEEK_R1_PATH}}
+      ;;
+    "qwq-32b")
+      MODEL_PATH={{QWQ_32B_PATH}}
+      ;;
+    "llama-8b")
+      MODEL_PATH={{LLAMA_8B_PATH}}
+      ;;
+    *)
+      echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b"
+      exit 1
+      ;;
+  esac
+
+  # Parse input and output lengths
+  INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
+  OUTPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f2)
+
   uvx --with-requirements requirements-benchmark.txt \
     python vllm-benchmarks/benchmarks/benchmark_serving.py \
-    --model {{model_name}} \
+    --model ${MODEL_PATH} \
     --port ${PORT} \
     --dataset-name random --ignore-eos \
     --num-prompts 50 \
     --request-rate 10 \
-    --random-input-len {{input_len}} --random-output-len {{output_len}} \
+    --random-input-len ${INPUT_LEN} \
+    --random-output-len ${OUTPUT_LEN} \
     --save-result \
-    --result-dir results \
-    --result-filename {{backend_name}}-{{input_len}}-{{output_len}}.json
+    --result-dir results/{{model}} \
+    --result-filename {{backend}}-${INPUT_LEN}-${OUTPUT_LEN}.json
 
-run-sweeps backend_name="vllm" model_name="/home/vllm-dev/DeepSeek-R1":
-  just run-scenario {{backend_name}} "1000" "1000" {{model_name}}
-  just run-scenario {{backend_name}} "5000" "1000" {{model_name}}
-  just run-scenario {{backend_name}} "10000" "1000" {{model_name}}
-  just run-scenario {{backend_name}} "32000" "1000" {{model_name}}
+# Run benchmark sweeps for a specific backend and model
+run-sweeps backend="vllm" model="deepseek-r1":
+  #!/usr/bin/env bash
+  for pair in "1000,2000" "5000,1000" "10000,500" "32000,100"; do
+    just run-scenario {{backend}} {{model}} ${pair}
+  done
 
-show-results:
-  uvx --with rich --with pandas python extract-result.py
+show-results model="deepseek-r1":
+  uvx --with rich --with pandas python extract-result.py results/{{model}}

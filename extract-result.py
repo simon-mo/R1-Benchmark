@@ -1,6 +1,7 @@
 import json
 import glob
 import re
+import sys
 from pathlib import Path
 import pandas as pd
 from rich.console import Console
@@ -103,13 +104,13 @@ def calculate_comparison(df):
 
     return pd.DataFrame(scenarios)
 
-def display_rich_table(df):
+def display_rich_table(df, results_dir):
     if df.empty:
         console.print("[red]Error:[/red] No data to display")
         return
 
     # Create the table
-    table = Table(title="Benchmark Comparison: vLLM vs SGL (Output Tokens/s)")
+    table = Table(title="Benchmark Comparison: vLLM vs SGL (Output Tokens/s)", caption=f"Model: {Path(results_dir).name}")
 
     # Add columns
     table.add_column("Input Tokens", justify="right", style="cyan")
@@ -119,7 +120,7 @@ def display_rich_table(df):
     metric = 'output_toks/s'
     table.add_column("vLLM", justify="right", style="green")
     table.add_column("SGL", justify="right", style="blue")
-    table.add_column("Gap %", justify="right", style="yellow")
+    table.add_column("Diff %", justify="right", style="yellow")
 
     # Sort by input tokens, then output tokens
     df_sorted = df.sort_values(['input_tokens', 'output_tokens'])
@@ -140,13 +141,13 @@ def display_rich_table(df):
 
 def main():
     # Load and process results
-    results_dir = "./results"  # Change this to your results directory
+    results_dir = sys.argv[1]
     console.print(f"\nLoading results from {Path(results_dir).absolute()}")
 
     df = load_results(results_dir)
     if not df.empty:
         comparison_df = calculate_comparison(df)
-        display_rich_table(comparison_df)
+        display_rich_table(comparison_df, results_dir)
 
 if __name__ == "__main__":
     main()
