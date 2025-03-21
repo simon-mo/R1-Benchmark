@@ -9,7 +9,7 @@ VLLM_ENV := "VLLM_USE_FLASHINFER_SAMPLER=1"
 
 # SGL-specific arguments and env
 SGL_ENV := "SGL_ENABLE_JIT_DEEPGEMM=1"
-SGL_SERVE_ARGS := COMMON_SERVE_ARGS + " --enable-torch-compile --torch-compile-max-bs 8 --enable-flashinfer-mla --disable-radix-cache"
+SGL_SERVE_ARGS := COMMON_SERVE_ARGS + " --enable-flashinfer-mla --disable-radix-cache"
 
 # Model configurations
 DEEPSEEK_R1_PATH := "/home/vllm-dev/DeepSeek-R1"
@@ -51,9 +51,8 @@ _serve-vllm model_path tp="1":
 
 _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
-  # Add load-format dummy for all models except DeepSeek-R1
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
-    SGL_ARGS="{{SGL_SERVE_ARGS}}"
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8"
   else
     SGL_ARGS="{{SGL_SERVE_ARGS}} --load-format dummy"
   fi
