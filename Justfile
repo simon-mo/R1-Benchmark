@@ -18,8 +18,11 @@ DEEPSEEK_R1_TP := "8"
 QWQ_32B_PATH := "Qwen/QwQ-32B"
 QWQ_32B_TP := "2"
 
-LLAMA_8B_PATH := "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+LLAMA_8B_PATH := "neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8"
 LLAMA_8B_TP := "1"
+
+LLAMA_3B_PATH := "neuralmagic/Llama-3.2-3B-Instruct-FP8"
+LLAMA_3B_TP := "1"
 
 # Port configurations
 VLLM_PORT := "8000"
@@ -61,31 +64,55 @@ _serve-sgl model_path tp="1":
     --tp {{tp}} \
     ${SGL_ARGS}
 
+# Helper command to get model path from alias
+get-model-path model:
+    #!/usr/bin/env bash
+    case "{{model}}" in
+        "deepseek-r1")
+            echo {{DEEPSEEK_R1_PATH}}
+            ;;
+        "qwq-32b")
+            echo {{QWQ_32B_PATH}}
+            ;;
+        "llama-8b")
+            echo {{LLAMA_8B_PATH}}
+            ;;
+        "llama-3b")
+            echo {{LLAMA_3B_PATH}}
+            ;;
+        *)
+            echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b, llama-3b" >&2
+            exit 1
+            ;;
+    esac
+
 # Unified serve command for both backends
 serve backend="vllm" model="deepseek-r1":
-  #!/usr/bin/env bash
-  # Validate backend
-  if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
-    echo "Invalid backend. Available backends: vllm, sgl"
-    exit 1
-  fi
+    #!/usr/bin/env bash
+    # Validate backend
+    if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
+        echo "Invalid backend. Available backends: vllm, sgl"
+        exit 1
+    fi
 
-  # Get model configuration and serve
-  case "{{model}}" in
-    "deepseek-r1")
-      just _serve-{{backend}} {{DEEPSEEK_R1_PATH}} {{DEEPSEEK_R1_TP}}
-      ;;
-    "qwq-32b")
-      just _serve-{{backend}} {{QWQ_32B_PATH}} {{QWQ_32B_TP}}
-      ;;
-    "llama-8b")
-      just _serve-{{backend}} {{LLAMA_8B_PATH}} {{LLAMA_8B_TP}}
-      ;;
-    *)
-      echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b"
-      exit 1
-      ;;
-  esac
+    # Get model path and tensor parallel size
+    MODEL_PATH=$(just get-model-path {{model}})
+    case "{{model}}" in
+        "deepseek-r1")
+            TP={{DEEPSEEK_R1_TP}}
+            ;;
+        "qwq-32b")
+            TP={{QWQ_32B_TP}}
+            ;;
+        "llama-8b")
+            TP={{LLAMA_8B_TP}}
+            ;;
+        "llama-3b")
+            TP={{LLAMA_3B_TP}}
+            ;;
+    esac
+
+    just _serve-{{backend}} ${MODEL_PATH} ${TP}
 
 list-versions:
   just uvx-vllm vllm --version
@@ -107,53 +134,39 @@ ensure-results-dir model:
 
 # Run a single benchmark scenario
 run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
-  #!/usr/bin/env bash
-  set -ex
+    #!/usr/bin/env bash
+    set -ex
 
-  just ensure-results-dir {{model}}
+    just ensure-results-dir {{model}}
 
-  # Validate backend
-  if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
-    echo "Invalid backend. Available backends: vllm, sgl"
-    exit 1
-  fi
+    # Validate backend
+    if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
+        echo "Invalid backend. Available backends: vllm, sgl"
+        exit 1
+    fi
 
-  # Set port based on backend
-  PORT=$([[ "{{backend}}" = "sgl" ]] && echo "{{SGL_PORT}}" || echo "{{VLLM_PORT}}")
+    # Set port based on backend
+    PORT=$([[ "{{backend}}" = "sgl" ]] && echo "{{SGL_PORT}}" || echo "{{VLLM_PORT}}")
 
-  # Get model path based on alias
-  case "{{model}}" in
-    "deepseek-r1")
-      MODEL_PATH={{DEEPSEEK_R1_PATH}}
-      ;;
-    "qwq-32b")
-      MODEL_PATH={{QWQ_32B_PATH}}
-      ;;
-    "llama-8b")
-      MODEL_PATH={{LLAMA_8B_PATH}}
-      ;;
-    *)
-      echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b"
-      exit 1
-      ;;
-  esac
+    # Get model path
+    MODEL_PATH=$(just get-model-path {{model}})
 
-  # Parse input and output lengths
-  INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
-  OUTPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f2)
+    # Parse input and output lengths
+    INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
+    OUTPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f2)
 
-  uvx --with-requirements requirements-benchmark.txt \
-    python vllm-benchmarks/benchmarks/benchmark_serving.py \
-    --model ${MODEL_PATH} \
-    --port ${PORT} \
-    --dataset-name random --ignore-eos \
-    --num-prompts 50 \
-    --request-rate 10 \
-    --random-input-len ${INPUT_LEN} \
-    --random-output-len ${OUTPUT_LEN} \
-    --save-result \
-    --result-dir results/{{model}} \
-    --result-filename {{backend}}-${INPUT_LEN}-${OUTPUT_LEN}.json
+    uvx --with-requirements requirements-benchmark.txt \
+        python vllm-benchmarks/benchmarks/benchmark_serving.py \
+        --model ${MODEL_PATH} \
+        --port ${PORT} \
+        --dataset-name random --ignore-eos \
+        --num-prompts 50 \
+        --request-rate 10 \
+        --random-input-len ${INPUT_LEN} \
+        --random-output-len ${OUTPUT_LEN} \
+        --save-result \
+        --result-dir results/{{model}} \
+        --result-filename {{backend}}-${INPUT_LEN}-${OUTPUT_LEN}.json
 
 # Run benchmark sweeps for a specific backend and model
 run-sweeps backend="vllm" model="deepseek-r1":
@@ -164,3 +177,29 @@ run-sweeps backend="vllm" model="deepseek-r1":
 
 show-results model="deepseek-r1":
   uvx --with rich --with pandas python extract-result.py results/{{model}}
+
+run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128":
+    #!/usr/bin/env bash
+    set -ex
+
+    # Get model path
+    MODEL_PATH=$(just get-model-path {{model}})
+
+    just ensure-results-dir {{model}}
+
+    uvx --with guidellm guidellm \
+        --target "http://localhost:8000/v1" \
+        --model "$MODEL_PATH" \
+        --data-type emulated \
+        --data "prompt_tokens={{prompt_tokens}},generated_tokens={{generated_tokens}}" \
+        --max-seconds 30 \
+        --output-path results/{{model}}/guidellm-{{prompt_tokens}}-{{generated_tokens}}.json
+
+download-model model="deepseek-r1":
+    #!/usr/bin/env bash
+    set -ex
+
+    # Get model path
+    MODEL_PATH=$(just get-model-path {{model}})
+
+    huggingface-cli download ${MODEL_PATH}
