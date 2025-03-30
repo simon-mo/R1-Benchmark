@@ -12,7 +12,7 @@ SGL_ENV := "SGL_ENABLE_JIT_DEEPGEMM=1"
 SGL_SERVE_ARGS := COMMON_SERVE_ARGS + " --enable-flashinfer-mla --disable-radix-cache"
 
 # Model configurations
-DEEPSEEK_R1_PATH := "/home/vllm-dev/DeepSeek-R1"
+DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
 DEEPSEEK_R1_TP := "8"
 
 QWQ_32B_PATH := "Qwen/QwQ-32B"
