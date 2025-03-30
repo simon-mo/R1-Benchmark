@@ -34,16 +34,16 @@ list:
 # Recipe for running uvx with vllm configuration
 uvx-vllm +args:
   UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
-    --with 'vllm==0.8.1' \
-    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2.post1/flashinfer_python-0.2.2.post1+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
-    {{args}}
+    --with 'vllm==0.8.2' \
+    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.3/flashinfer_python-0.2.3+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
+    {{args}} # (March 29: FlashInfer released v0.2.4, but it's not compatible with torch 2.6)
 
 # Recipe for running uvx with sglang configuration
 uvx-sgl +args:
   #!/usr/bin/env bash
   UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
-    --with 'sglang[all]==0.4.4.post1' \
-    --find-links https://flashinfer.ai/whl/cu124/torch2.6/flashinfer-python \
+    --with 'sglang[all]==0.4.4.post3' \
+    --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
 
 # Base recipes for serving
