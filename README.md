@@ -23,14 +23,14 @@ just clone-vllm-benchmarks
 ```
 
 4. Run the benchmark
-Run the server via `just serve-vllm` or `just serve-sgl`. Run the benchmark via `just run-sweeps` or `just run-sweeps sgl`.
+Run the server via `just serve vllm` or `just serve sgl`. Run the benchmark via `just run-sweeps` or `just run-sweeps sgl`.
 
 * Note that for SGL, you need to download the model first because it cannot run with dummy format.
   Please modify the `Justfile` to point to the correct path.
 
-* For TP4 (Qwen/QwQ-32B), you need to use `just serve-vllm-qwq-32b` and `just serve-sgl-qwq-32b`. With `just run-sweeps vllm 'Qwen/QwQ-32B'` and `just run-sweeps sgl 'Qwen/QwQ-32B'`, you can get the results.
+* For TP4 (Qwen/QwQ-32B), you need to use `just serve vllm qwq-32b` and `just serve sgl qwq-32b`. With `just run-sweeps vllm qwq-32b` and `just run-sweeps sgl qwq-32b`, you can get the results.
 
-* For TP1 (Llama-3.1-8B), you need to use `just serve-vllm-llama-8b` and `just serve-sgl-llama-8b`. With `just run-sweeps vllm 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B'` and `just run-sweeps sgl 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B'`, you can get the results.
+* For TP1 (Llama-3.1-8B), you need to use `just serve vllm llama-8b` and `just serve sgl llama-8b`. With `just run-sweeps vllm llama-8b` and `just run-sweeps sgl llama-8b`, you can get the results.
 
 5. Aggregate the results
 ```bash
@@ -74,7 +74,7 @@ As of March 21, 2025: H200 (In vLLM, not all requests are completed)
                        Model: qwq-32b
 ```
 
-As of March 30, 2025: H200 (Brewster)
+As of March 30, 2025: H200 
 ```
      Benchmark Comparison: vLLM vs SGL (Output Tokens/s)     
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
@@ -120,7 +120,7 @@ As of March 30, 2025: H200 (Brewster)
 └──────────────┴───────────────┴─────────┴─────────┴────────┘
                        Model: qwq-32b
 ```
-H100 (flow-matic)
+H100 
 ```
      Benchmark Comparison: vLLM vs SGL (Output Tokens/s)     
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
