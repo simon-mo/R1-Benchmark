@@ -24,6 +24,10 @@ LLAMA_8B_TP := "1"
 LLAMA_3B_PATH := "neuralmagic/Llama-3.2-3B-Instruct-FP8"
 LLAMA_3B_TP := "1"
 
+QWEN_1_5B_PATH := "Qwen/Qwen2.5-1.5B-Instruct"
+QWEN_1_5B_TP := "1"
+
+
 # Port configurations
 VLLM_PORT := "8000"
 SGL_PORT := "30000"
@@ -80,8 +84,11 @@ get-model-path model:
         "llama-3b")
             echo {{LLAMA_3B_PATH}}
             ;;
+        "qwen-1.5b")
+            echo {{QWEN_1_5B_PATH}}
+            ;;
         *)
-            echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b, llama-3b" >&2
+            echo "Invalid model. Available models: deepseek-r1, qwq-32b, llama-8b, llama-3b, qwen-1.5b" >&2
             exit 1
             ;;
     esac
@@ -123,7 +130,7 @@ clone-vllm-benchmarks target_dir="vllm-benchmarks":
   #!/usr/bin/env bash
   set -euo pipefail
   rm -rf {{target_dir}}
-  git clone --filter=blob:none --no-checkout https://github.com/vllm-project/vllm.git {{target_dir}}
+  git clone https://github.com/vllm-project/vllm.git {{target_dir}}
   cd {{target_dir}}
   git sparse-checkout init --no-cone
   echo "benchmarks/**" > .git/info/sparse-checkout
@@ -171,7 +178,7 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
 # Run benchmark sweeps for a specific backend and model
 run-sweeps backend="vllm" model="deepseek-r1":
   #!/usr/bin/env bash
-  for pair in "1000,2000" "5000,1000" "10000,500" "32000,100"; do
+  for pair in "1000,2000" "5000,1000" "10000,500" "30000,100"; do
     just run-scenario {{backend}} {{model}} ${pair}
   done
 

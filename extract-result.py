@@ -90,15 +90,16 @@ def calculate_comparison(df):
         vllm_data = group[group['backend'] == 'vllm'].iloc[0] if len(group[group['backend'] == 'vllm']) > 0 else None
         sgl_data = group[group['backend'] == 'sgl'].iloc[0] if len(group[group['backend'] == 'sgl']) > 0 else None
 
-        if vllm_data is not None and sgl_data is not None:
-            for metric in metrics:
-                vllm_value = vllm_data[metric]
-                sgl_value = sgl_data[metric]
-                gap_percentage = ((vllm_value - sgl_value) / sgl_value) * 100
+        for metric in metrics:
+            vllm_value = vllm_data[metric] if vllm_data is not None else 0
+            sgl_value = sgl_data[metric] if sgl_data is not None else 0
 
-                scenario[f'vllm_{metric}'] = vllm_value
-                scenario[f'sgl_{metric}'] = sgl_value
-                scenario[f'gap_{metric}'] = gap_percentage
+            # Calculate gap percentage only if both values are non-zero
+            gap_percentage = ((vllm_value - sgl_value) / sgl_value * 100) if sgl_value != 0 else 0
+
+            scenario[f'vllm_{metric}'] = vllm_value
+            scenario[f'sgl_{metric}'] = sgl_value
+            scenario[f'gap_{metric}'] = gap_percentage
 
         scenarios.append(scenario)
 
