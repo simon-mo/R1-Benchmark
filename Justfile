@@ -27,7 +27,6 @@ LLAMA_3B_TP := "1"
 QWEN_1_5B_PATH := "Qwen/Qwen2.5-1.5B-Instruct"
 QWEN_1_5B_TP := "1"
 
-
 # Port configurations
 VLLM_PORT := "8000"
 SGL_PORT := "30000"
@@ -130,7 +129,7 @@ clone-vllm-benchmarks target_dir="vllm-benchmarks":
   #!/usr/bin/env bash
   set -euo pipefail
   rm -rf {{target_dir}}
-  git clone https://github.com/vllm-project/vllm.git {{target_dir}}
+  git clone --filter=blob:none --no-checkout https://github.com/vllm-project/vllm.git {{target_dir}}
   cd {{target_dir}}
   git sparse-checkout init --no-cone
   echo "benchmarks/**" > .git/info/sparse-checkout
