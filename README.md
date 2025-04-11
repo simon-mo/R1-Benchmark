@@ -1,13 +1,13 @@
 This repo is used for vLLM's interative performance spot check.
 For automated benchmark, please refer to vLLM's nightly set.
 
-The goal for this repo is establish a set of commonly used benchmarks and worklaods for comparative analysis. 
+The goal for this repo is establish a set of commonly used benchmarks and worklaods for comparative analysis.
 
 # Latest Numbers
 
 As of March 30, 2025: H200, vLLM 0.8.2, SGL v0.4.4
 ```
-     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)     
+     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
 ┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃ Diff % ┃
 ┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
@@ -19,7 +19,7 @@ As of March 30, 2025: H200, vLLM 0.8.2, SGL v0.4.4
                      Model: deepseek-r1
 
 
-     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)     
+     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
 ┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃     SGL ┃ Diff % ┃
 ┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
@@ -66,4 +66,21 @@ In short: Run the server via `just serve vllm` or `just serve sgl`. Run the benc
 5. Aggregate the results
 ```bash
 just show-results
+```
+
+Documentation: `just list`
+```
+Available recipes:
+    clone-vllm-benchmarks target_dir="vllm-benchmarks" # Clone only the benchmarks directory from vllm repository
+    download-model model="deepseek-r1"                 # Utility to download models from huggingface
+    list                                               # Default recipe, list all recipes
+    list-versions
+    run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128" # Run guidellm's qps sweep
+    run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000" # Run a single benchmark scenario
+    run-sweeps backend="vllm" model="deepseek-r1"      # Run benchmark sweeps for a specific backend and model
+    serve backend="vllm" model="deepseek-r1"           # Unified serve command for both backends.
+    show-results model="deepseek-r1"                   # Generate table and graph
+    uvx-sgl +args                                      # Run reproducible sGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
+    uvx-vllm +args                                     # Run reproducible vLLM installation with `just uvx-vllm vllm serve ...`
+Available Models: deepseek-r1, qwq-32b, llama-8b, llama-3b, qwen-1.5b
 ```

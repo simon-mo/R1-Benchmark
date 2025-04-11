@@ -12,7 +12,8 @@ SGL_ENV := "SGL_ENABLE_JIT_DEEPGEMM=1"
 SGL_SERVE_ARGS := COMMON_SERVE_ARGS + " --enable-flashinfer-mla --disable-radix-cache"
 
 # Model configurations
-DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
+# DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
+DEEPSEEK_R1_PATH := "/data/nm/models/DeepSeek-R1"
 DEEPSEEK_R1_TP := "8"
 
 QWQ_32B_PATH := "Qwen/QwQ-32B"
@@ -31,21 +32,23 @@ QWEN_1_5B_TP := "1"
 VLLM_PORT := "8000"
 SGL_PORT := "30000"
 
+# Default recipe, list all recipes
 list:
-  just --list
+  @just --list
+  @echo "Available Models: deepseek-r1, qwq-32b, llama-8b, llama-3b, qwen-1.5b"
 
-# Recipe for running uvx with vllm configuration
+# Run reproducible vLLM installation with `just uvx-vllm vllm serve ...`
 uvx-vllm +args:
   UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
-    --with 'vllm==0.8.2' \
-    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.3/flashinfer_python-0.2.3+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
+    --with 'vllm==0.8.4' \
+    --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2/flashinfer_python-0.2.2+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
     {{args}} # (March 29: FlashInfer released v0.2.4, but it's not compatible with torch 2.6)
 
-# Recipe for running uvx with sglang configuration
+# Run reproducible sGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
 uvx-sgl +args:
   #!/usr/bin/env bash
   UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
-    --with 'sglang[all]==0.4.4.post3' \
+    --with 'sglang[all]==0.4.5' \
     --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
 
@@ -68,7 +71,7 @@ _serve-sgl model_path tp="1":
     ${SGL_ARGS}
 
 # Helper command to get model path from alias
-get-model-path model:
+_get-model-path model:
     #!/usr/bin/env bash
     case "{{model}}" in
         "deepseek-r1")
@@ -92,7 +95,7 @@ get-model-path model:
             ;;
     esac
 
-# Unified serve command for both backends
+# Unified serve command for both backends.
 serve backend="vllm" model="deepseek-r1":
     #!/usr/bin/env bash
     # Validate backend
@@ -102,7 +105,7 @@ serve backend="vllm" model="deepseek-r1":
     fi
 
     # Get model path and tensor parallel size
-    MODEL_PATH=$(just get-model-path {{model}})
+    MODEL_PATH=$(just _get-model-path {{model}})
     case "{{model}}" in
         "deepseek-r1")
             TP={{DEEPSEEK_R1_TP}}
@@ -135,7 +138,7 @@ clone-vllm-benchmarks target_dir="vllm-benchmarks":
   echo "benchmarks/**" > .git/info/sparse-checkout
   git checkout
 
-ensure-results-dir model:
+_ensure-results-dir model:
   mkdir -p results/{{model}}
 
 # Run a single benchmark scenario
@@ -143,7 +146,7 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
     #!/usr/bin/env bash
     set -ex
 
-    just ensure-results-dir {{model}}
+    just _ensure-results-dir {{model}}
 
     # Validate backend
     if [ "{{backend}}" != "vllm" ] && [ "{{backend}}" != "sgl" ]; then
@@ -155,7 +158,7 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
     PORT=$([[ "{{backend}}" = "sgl" ]] && echo "{{SGL_PORT}}" || echo "{{VLLM_PORT}}")
 
     # Get model path
-    MODEL_PATH=$(just get-model-path {{model}})
+    MODEL_PATH=$(just _get-model-path {{model}})
 
     # Parse input and output lengths
     INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
@@ -179,19 +182,22 @@ run-sweeps backend="vllm" model="deepseek-r1":
   #!/usr/bin/env bash
   for pair in "1000,2000" "5000,1000" "10000,500" "30000,100"; do
     just run-scenario {{backend}} {{model}} ${pair}
+    sleep 10
   done
 
+# Generate table and graph
 show-results model="deepseek-r1":
   uvx --with rich --with pandas python extract-result.py results/{{model}}
 
+# Run guidellm's qps sweep
 run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128":
     #!/usr/bin/env bash
     set -ex
 
     # Get model path
-    MODEL_PATH=$(just get-model-path {{model}})
+    MODEL_PATH=$(just _get-model-path {{model}})
 
-    just ensure-results-dir {{model}}
+    just _ensure-results-dir {{model}}
 
     uvx --with guidellm guidellm \
         --target "http://localhost:8000/v1" \
@@ -201,11 +207,12 @@ run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128":
         --max-seconds 30 \
         --output-path results/{{model}}/guidellm-{{prompt_tokens}}-{{generated_tokens}}.json
 
+# Utility to download models from huggingface
 download-model model="deepseek-r1":
     #!/usr/bin/env bash
     set -ex
 
     # Get model path
-    MODEL_PATH=$(just get-model-path {{model}})
+    MODEL_PATH=$(just _get-model-path {{model}})
 
     huggingface-cli download ${MODEL_PATH}
