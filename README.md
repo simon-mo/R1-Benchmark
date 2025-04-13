@@ -5,6 +5,20 @@ The goal for this repo is establish a set of commonly used benchmarks and workla
 
 # Latest Numbers
 
+As of April 11, 2025: H200, vLLM 0.8.4, SGL v0.4.5
+```
+    Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
+┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃ Diff % ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
+│         1000 │          2000 │ 1710.28 │ 441.42 │ 287.4% │
+│         5000 │          1000 │ 1140.25 │ 636.37 │  79.2% │
+│        10000 │           500 │  518.24 │ 260.94 │  98.6% │
+│        30000 │           100 │   32.56 │  17.74 │  83.5% │
+└──────────────┴───────────────┴─────────┴────────┴────────┘
+                     Model: deepseek-r1
+```
+
 As of March 30, 2025: H200, vLLM 0.8.2, SGL v0.4.4
 ```
      Benchmark Comparison: vLLM vs SGL (Output Tokens/s)

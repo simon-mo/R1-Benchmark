@@ -4,4 +4,4 @@ Pillow
 tqdm
 transformers
 datasets
-vllm # for utility only
+vllm>0.8 # for utility only

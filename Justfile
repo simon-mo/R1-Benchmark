@@ -40,14 +40,14 @@ list:
 # Run reproducible vLLM installation with `just uvx-vllm vllm serve ...`
 uvx-vllm +args:
   UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
-    --with 'vllm==0.8.4' \
+    --with 'vllm==0.8.3' \
     --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2/flashinfer_python-0.2.2+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
     {{args}} # (March 29: FlashInfer released v0.2.4, but it's not compatible with torch 2.6)
 
 # Run reproducible sGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
 uvx-sgl +args:
   #!/usr/bin/env bash
-  UV_PYTHON={{UV_PYTHON_VERSION}} uvx --with setuptools \
+  UV_PYTHON={{UV_PYTHON_VERSION}} uv run --with setuptools \
     --with 'sglang[all]==0.4.5' \
     --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
@@ -61,8 +61,11 @@ _serve-vllm model_path tp="1":
 _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
-    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8"
+    # https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
+    # (04/11/25): DP size is crashing.
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8 --enable-dp-attention --data-parallel-size 4"
   else
+    # Dummy format doesn't work for DeepSeek-R1 in SGL.
     SGL_ARGS="{{SGL_SERVE_ARGS}} --load-format dummy"
   fi
   {{SGL_ENV}} just uvx-sgl python -m sglang.launch_server \
@@ -164,8 +167,8 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
     INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
     OUTPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f2)
 
-    uvx --with-requirements requirements-benchmark.txt \
-        python vllm-benchmarks/benchmarks/benchmark_serving.py \
+    uv run --with-requirements requirements-benchmark.txt \
+        vllm-benchmarks/benchmarks/benchmark_serving.py \
         --model ${MODEL_PATH} \
         --port ${PORT} \
         --dataset-name random --ignore-eos \
@@ -180,6 +183,8 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
 # Run benchmark sweeps for a specific backend and model
 run-sweeps backend="vllm" model="deepseek-r1":
   #!/usr/bin/env bash
+  set -ex
+
   for pair in "1000,2000" "5000,1000" "10000,500" "30000,100"; do
     just run-scenario {{backend}} {{model}} ${pair}
     sleep 10
@@ -187,7 +192,7 @@ run-sweeps backend="vllm" model="deepseek-r1":
 
 # Generate table and graph
 show-results model="deepseek-r1":
-  uvx --with rich --with pandas python extract-result.py results/{{model}}
+  uv run --with rich --with pandas extract-result.py results/{{model}}
 
 # Run guidellm's qps sweep
 run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128":

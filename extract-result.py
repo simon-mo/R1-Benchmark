@@ -140,6 +140,15 @@ def display_rich_table(df, results_dir):
     # Print the table
     console.print(table)
 
+    # Print CSV for Easy Plotting
+    from io import StringIO
+    import csv
+
+    output = StringIO()
+    df.to_csv(output, index=False)
+    console.print("----- CSV for Easy Plotting -----")
+    console.print(output.getvalue())
+
 def main():
     # Load and process results
     results_dir = sys.argv[1]
@@ -149,6 +158,7 @@ def main():
     if not df.empty:
         comparison_df = calculate_comparison(df)
         display_rich_table(comparison_df, results_dir)
+
 
 if __name__ == "__main__":
     main()
