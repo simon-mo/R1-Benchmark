@@ -53,6 +53,13 @@ uvx-sgl +args:
     --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
 
+# Run reproducible TensorRT-LLM installation with `just uvx-trt trtllm-serve ...`
+uvx-trt +args:
+  UV_PYTHON={{UV_PYTHON_VERSION}} uv run \
+    --with 'tensorrt_llm==0.18.1' \
+    --extra-index-url https://pypi.nvidia.com \
+    {{args}}
+
 # Base recipes for serving
 _serve-vllm model_path tp="1":
   {{VLLM_ENV}} just uvx-vllm vllm serve {{model_path}} \
@@ -63,7 +70,7 @@ _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
     # https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
-    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8"
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8"
 
     # (04/11/25): DP is crashing with torch compile, and the result with this is worse than no dp attention.
     # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-dp-attention --data-parallel-size 8"
@@ -78,6 +85,19 @@ _serve-sgl model_path tp="1":
     --model {{model_path}} \
     --tp {{tp}} \
     ${SGL_ARGS}
+
+_serve-trtllm model_path tp="1":
+  # (04/14/2025): NVIDIA team recommended the following for 1k:1k settings but I removed it to keep it general.
+  # --max_num_tokens 1170 \
+  # --max_seq_len 2000 \
+  just uvx-trt trtllm-serve {{model_path}} \
+    --backend pytorch \
+    --tp_size {{tp}} \
+    --ep_size {{tp}} \
+    --kv_cache_free_gpu_memory_fraction 0.90 \
+    --max_batch_size 324 \
+    --trust_remote_code  \
+    --extra_llm_api_options ./configs/trtllm-deepseek-r1-options.yaml
 
 # Helper command to get model path from alias
 _get-model-path model:
