@@ -44,11 +44,12 @@ uvx-vllm +args:
     --with https://github.com/flashinfer-ai/flashinfer/releases/download/v0.2.2/flashinfer_python-0.2.2+cu124torch2.6-cp38-abi3-linux_x86_64.whl \
     {{args}} # (March 29: FlashInfer released v0.2.4, but it's not compatible with torch 2.6)
 
-# Run reproducible sGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
+# Run reproducible SGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
 uvx-sgl +args:
   #!/usr/bin/env bash
   UV_PYTHON={{UV_PYTHON_VERSION}} uv run --with setuptools \
     --with 'sglang[all]==0.4.5' \
+    --with '/data/xmo/DeepEP/dist/deep_ep-1.0.0+a0c6931-cp311-cp311-linux_x86_64.whl' \
     --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
 
@@ -62,8 +63,13 @@ _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
     # https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
-    # (04/11/25): DP size is crashing.
-    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8 --enable-dp-attention --data-parallel-size 4"
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8"
+
+    # (04/11/25): DP is crashing with torch compile, and the result with this is worse than no dp attention.
+    # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-dp-attention --data-parallel-size 8"
+
+    # (04/14/25): Tried DeepEP bad crashed at nvshmem detect topo failed for single node.
+    # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-deepep-moe --deepep-mode auto"
   else
     # Dummy format doesn't work for DeepSeek-R1 in SGL.
     SGL_ARGS="{{SGL_SERVE_ARGS}} --load-format dummy"
