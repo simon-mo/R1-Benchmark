@@ -70,10 +70,10 @@ _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
     # https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
-    # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8"
+    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8"
 
-    # (04/11/25): DP is crashing with torch compile.
-    SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-dp-attention --data-parallel-size 8 --expert-parallel-size 8"
+    # (04/11/25): DP is crashing with torch compile. The result of dp+ep is worse than torch.compile + ep.
+    # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-dp-attention --data-parallel-size 8 --expert-parallel-size 8"
 
     # (04/14/25): Tried DeepEP bad crashed at nvshmem detect topo failed for single node.
     # SGL_ARGS="{{SGL_SERVE_ARGS}} --enable-deepep-moe --deepep-mode auto"
