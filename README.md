@@ -21,9 +21,10 @@ As of April 16, 2025: H200, vLLM 0.8.4, SGL v0.4.5, TRT-LLM main
 ```
 
 Flags:
-* vLLM: `--enable-expert-parallel`, `VLLM_USE_FLASHINFER_SAMPLER=1`
+* Benchmark: 50 queries for fixed length, 500 for sharegpt. 10 qps for a fast ramp up.
+* vLLM: `--enable-expert-parallel`, `VLLM_USE_FLASHINFER_SAMPLER=1`.
 * SGL: `--enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8`, `SGL_ENABLE_JIT_DEEPGEMM=1`. (DP and DeepEP are also attempted, see LOG.md)
-* TRT-LLM: `--ep_size 8 --kv_cache_free_gpu_memory_fraction 0.8 --max_batch_size 50 --max_num_tokens 11000`, `TRT_LLM_ENABLE_FLASHINFER=1`.
+* TRT-LLM: `--ep_size 8 --kv_cache_free_gpu_memory_fraction 0.8 --max_batch_size 50 --max_num_tokens 11000`.
 
 # Usage
 * All the commands are defined in `Justfile`.
