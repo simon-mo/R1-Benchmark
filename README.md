@@ -5,44 +5,19 @@ The goal for this repo is establish a set of commonly used benchmarks and workla
 
 # Latest Numbers
 
-As of April 14, 2025: H200, vLLM 0.8.3, SGL v0.4.5 (with EP)
+As of April 16, 2025: H200, vLLM 0.8.4, SGL v0.4.5, TRT-LLM main
 ```
-    Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
-┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃ Diff % ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│         1000 │          2000 │ 1710.28 │ 938.05 │  82.3% │
-│         5000 │          1000 │ 1140.25 │ 679.39 │  67.8% │
-│        10000 │           500 │  518.24 │ 286.36 │  81.0% │
-│        30000 │           100 │   32.56 │  20.63 │  57.8% │
-└──────────────┴───────────────┴─────────┴────────┴────────┘
-```
-
-As of March 30, 2025: H200, vLLM 0.8.2, SGL v0.4.4
-```
-     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
-┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃ Diff % ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│         1000 │          2000 │ 1688.75 │ 426.47 │ 296.0% │
-│         5000 │          1000 │ 1138.18 │ 650.95 │  74.8% │
-│        10000 │           500 │  368.27 │ 259.88 │  41.7% │
-│        32000 │           100 │   34.71 │  19.15 │  81.3% │
-└──────────────┴───────────────┴─────────┴────────┴────────┘
-                     Model: deepseek-r1
-
-
-     Benchmark Comparison: vLLM vs SGL (Output Tokens/s)
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┓
-┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃     SGL ┃ Diff % ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━┩
-│         1000 │          2000 │ 4528.55 │ 4031.48 │  12.3% │
-│         5000 │          1000 │ 2446.93 │ 1854.14 │  32.0% │
-│        10000 │           500 │ 1149.16 │  891.53 │  28.9% │
-│        32000 │           100 │   96.62 │   70.84 │  36.4% │
-└──────────────┴───────────────┴─────────┴─────────┴────────┘
-                       Model: llama-8b
-
+                         Benchmark Comparison for vLLM (Output Tokens/s)
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃     TRT ┃ vLLM/SGL Diff % ┃ vLLM/TRT Diff % ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│         1000 │          2000 │ 1092.31 │ 922.29 │ 1014.95 │           18.4% │            7.6% │
+│         5000 │          1000 │  791.24 │ 690.19 │  807.61 │           14.6% │           -2.0% │
+│        10000 │           500 │  393.69 │ 290.93 │  431.46 │           35.3% │           -8.8% │
+│        30000 │           100 │   29.45 │  20.63 │    0.00 │           42.8% │            0.0% │
+│     sharegpt │      sharegpt │ 1374.43 │ 779.83 │  735.60 │           76.2% │           86.8% │
+└──────────────┴───────────────┴─────────┴────────┴─────────┴─────────────────┴─────────────────┘
+                                       Model: deepseek-r1
 ```
 
 # Usage
@@ -55,7 +30,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
 ```
 
-2. Create the environment for vLLM and SGL
+2. Create the environment for vLLM and SGL, this command will download and cache the dependencies.
 ```bash
 just list-versions
 ```
@@ -67,33 +42,49 @@ just clone-vllm-benchmarks
 
 4. Run the benchmark
 
-In short: Run the server via `just serve vllm` or `just serve sgl`. Run the benchmark via `just run-sweeps` or `just run-sweeps sgl`.
+You will need two terminal windows for this step.
+* To run the server: `just serve vllm` or `just serve sgl`.
+* To run the benchmark: `just run-sweeps vllm` or `just run-sweeps sgl`. The results will be saved in `results/{{model_name}}` directory.
 
-* Note that for SGL, you need to download the model first because it cannot run with dummy format.
-  Please modify the `Justfile` to point to the correct path.
-
-* For TP1 (Llama-3.1-8B), you need to use `just serve vllm llama-8b` and `just serve sgl llama-8b`. With `just run-sweeps vllm llama-8b` and `just run-sweeps sgl llama-8b`, you can get the results.
-
-* For TP4 (Qwen/QwQ-32B), you need to use `just serve vllm qwq-32b` and `just serve sgl qwq-32b`. With `just run-sweeps vllm qwq-32b` and `just run-sweeps sgl qwq-32b`, you can get the results.
+For both command you can append model name to run the benchmark for a specific model. The current default is `deepseek-r1`. To see the supported models, run `just list`.
+```
+Available Models: deepseek-r1, qwq-32b, llama-8b, llama-3b, qwen-1.5b
+```
+For example, `just serve vllm llama-8b` and `just run-sweeps vllm llama-8b` will produce output for the model.
+The exact model path can be found in `Justfile`.
+The benchmark scenarios can also be found in `Justfile`.
 
 5. Aggregate the results
 ```bash
 just show-results
 ```
 
-Documentation: `just list`
+# Documentation
 ```
+$ just list
 Available recipes:
-    clone-vllm-benchmarks target_dir="vllm-benchmarks" # Clone only the benchmarks directory from vllm repository
-    download-model model="deepseek-r1"                 # Utility to download models from huggingface
     list                                               # Default recipe, list all recipes
-    list-versions
-    run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128" # Run guidellm's qps sweep
+
+    [benchmark]
     run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000" # Run a single benchmark scenario
     run-sweeps backend="vllm" model="deepseek-r1"      # Run benchmark sweeps for a specific backend and model
-    serve backend="vllm" model="deepseek-r1"           # Unified serve command for both backends.
     show-results model="deepseek-r1"                   # Generate table and graph
-    uvx-sgl +args                                      # Run reproducible sGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
+
+    [serve]
+    serve backend="vllm" model="deepseek-r1"           # Unified serve command for both backends.
+    uvx-sgl +args                                      # Run reproducible SGLang installation with `just uvx-sgl python -m sglang.launch_server ...`
     uvx-vllm +args                                     # Run reproducible vLLM installation with `just uvx-vllm vllm serve ...`
+
+    [utility]
+    clone-vllm-benchmarks target_dir="vllm-benchmarks" # Clone only the benchmarks directory from vllm repository
+    download-dataset dataset="sharegpt"                # Utility to download datasets
+    download-model model="deepseek-r1"                 # Utility to download models from huggingface
+    list-versions                                      # List versions of vLLM and SGLang
+    run-guidellm model="deepseek-r1" prompt_tokens="512" generated_tokens="128" # Run guidellm's qps sweep
 Available Models: deepseek-r1, qwq-32b, llama-8b, llama-3b, qwen-1.5b
 ```
+
+# Contributing
+* Please submit a PR to add new models or benchmarks workloads! If you run into anything worth noting, please also feel free to modify `LOG.md` so we can keep track of the changes.
+* For results that are worth keeping, please copy the output to `saved-results/{vllm-version}/{model_name}/{hardware_name}/{date}` directory.
+

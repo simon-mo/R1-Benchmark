@@ -3,8 +3,7 @@ import 'scripts/utils.just'
 UV_PYTHON_VERSION := "3.11"
 
 # Model configurations
-# DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
-DEEPSEEK_R1_PATH := "/data/nm/models/DeepSeek-R1"
+DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
 DEEPSEEK_R1_TP := "8"
 
 QWQ_32B_PATH := "Qwen/QwQ-32B"
@@ -45,7 +44,8 @@ uvx-sgl +args:
 # Base recipes for serving vLLM
 _serve-vllm model_path tp="1":
   #!/usr/bin/env bash
-  VLLM_ENV="VLLM_USE_FLASHINFER_SAMPLER=1"
+  set -ex
+
   VLLM_SERVE_ARGS="--trust-remote-code --no-enable-prefix-caching --disable-log-requests"
 
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
@@ -54,30 +54,23 @@ _serve-vllm model_path tp="1":
     VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS} --load-format dummy"
   fi
 
-  ${VLLM_ENV} just uvx-vllm vllm serve {{model_path}} \
+  VLLM_USE_FLASHINFER_SAMPLER=1 just uvx-vllm vllm serve {{model_path}} \
     --tensor-parallel-size {{tp}} \
     ${VLLM_SERVE_ARGS}
 
 # Base recipes for serving SGLang
 _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
-  SGL_ENV="SGL_ENABLE_JIT_DEEPGEMM=1"
   SGL_SERVE_ARGS="--trust-remote-code --enable-flashinfer-mla --disable-radix-cache"
 
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
     # Flag guide: https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
     SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8"
-
-    # (04/16/25): DP is not compatible with torch compile.The result of dp+ep is worse than torch.compile + ep.
-    # SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --enable-dp-attention --data-parallel-size 8 --expert-parallel-size 8"
-
-    # (04/16/25): Tried DeepEP bad crashed at nvshmem detect topo failed for single node.
-    # SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --enable-deepep-moe --deepep-mode auto"
   else
     SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --load-format dummy"
   fi
 
-  ${SGL_ENV} just uvx-sgl python -m sglang.launch_server \
+  SGL_ENABLE_JIT_DEEPGEMM=1 just uvx-sgl python -m sglang.launch_server \
     --model {{model_path}} \
     --port 8000 \
     --tp {{tp}} \
@@ -143,7 +136,7 @@ serve backend="vllm" model="deepseek-r1":
     fi
 
     if [ "{{backend}}" == "trt" ]; then
-      echo "Please check scripts/trt.just for instructions on how to run TRT server."
+      echo "Please check scripts/trt.just for instructions on how to run TRT-LLM."
       exit 1
     fi
 

@@ -11,15 +11,20 @@ console = Console()
 
 def extract_info_from_filename(filename):
     # Extract backend and tokens from filename pattern
-    pattern = r'(vllm|sgl)-(\d+)-(\d+)\.json'
+    pattern = r'(vllm|sgl|trt)-(?:(\d+)-(\d+)|sharegpt)\.json'
     match = re.search(pattern, filename)
     if not match:
         console.print(f"[yellow]Warning:[/yellow] Skipping file {filename} - doesn't match expected pattern")
         return None
 
     backend = match.group(1)
-    input_tokens = int(match.group(2))
-    output_tokens = int(match.group(3))
+    if match.group(2) and match.group(3):
+        input_tokens = int(match.group(2))
+        output_tokens = int(match.group(3))
+    else:
+        # For sharegpt files, set both to 'sharegpt'
+        input_tokens = 'sharegpt'
+        output_tokens = 'sharegpt'
 
     return {
         'backend': backend,
@@ -89,17 +94,22 @@ def calculate_comparison(df):
         # Get values for each backend
         vllm_data = group[group['backend'] == 'vllm'].iloc[0] if len(group[group['backend'] == 'vllm']) > 0 else None
         sgl_data = group[group['backend'] == 'sgl'].iloc[0] if len(group[group['backend'] == 'sgl']) > 0 else None
+        trt_data = group[group['backend'] == 'trt'].iloc[0] if len(group[group['backend'] == 'trt']) > 0 else None
 
         for metric in metrics:
             vllm_value = vllm_data[metric] if vllm_data is not None else 0
             sgl_value = sgl_data[metric] if sgl_data is not None else 0
+            trt_value = trt_data[metric] if trt_data is not None else 0
 
-            # Calculate gap percentage only if both values are non-zero
-            gap_percentage = ((vllm_value - sgl_value) / sgl_value * 100) if sgl_value != 0 else 0
+            # Calculate gap percentages only if both values are non-zero
+            gap_vllm_sgl = ((vllm_value - sgl_value) / sgl_value * 100) if sgl_value != 0 else 0
+            gap_vllm_trt = ((vllm_value - trt_value) / trt_value * 100) if trt_value != 0 else 0
 
             scenario[f'vllm_{metric}'] = vllm_value
             scenario[f'sgl_{metric}'] = sgl_value
-            scenario[f'gap_{metric}'] = gap_percentage
+            scenario[f'trt_{metric}'] = trt_value
+            scenario[f'gap_vllm_sgl_{metric}'] = gap_vllm_sgl
+            scenario[f'gap_vllm_trt_{metric}'] = gap_vllm_trt
 
         scenarios.append(scenario)
 
@@ -111,7 +121,7 @@ def display_rich_table(df, results_dir):
         return
 
     # Create the table
-    table = Table(title="Benchmark Comparison: vLLM vs SGL (Output Tokens/s)", caption=f"Model: {Path(results_dir).name}")
+    table = Table(title="Benchmark Comparison for vLLM (Output Tokens/s)", caption=f"Model: {Path(results_dir).name}")
 
     # Add columns
     table.add_column("Input Tokens", justify="right", style="cyan")
@@ -121,19 +131,22 @@ def display_rich_table(df, results_dir):
     metric = 'output_toks/s'
     table.add_column("vLLM", justify="right", style="green")
     table.add_column("SGL", justify="right", style="blue")
-    table.add_column("Diff %", justify="right", style="yellow")
-
+    table.add_column("TRT", justify="right", style="red")
+    table.add_column("vLLM/SGL Diff %", justify="right", style="yellow")
+    table.add_column("vLLM/TRT Diff %", justify="right", style="yellow")
     # Sort by input tokens, then output tokens
     df_sorted = df.sort_values(['input_tokens', 'output_tokens'])
 
     # Add rows
     for _, row in df_sorted.iterrows():
         values = [
-            str(int(row['input_tokens'])),
-            str(int(row['output_tokens'])),
+            str(row['input_tokens']),
+            str(row['output_tokens']),
             f"{row[f'vllm_{metric}']:.2f}",
             f"{row[f'sgl_{metric}']:.2f}",
-            f"{row[f'gap_{metric}']:.1f}%"
+            f"{row[f'trt_{metric}']:.2f}",
+            f"{row[f'gap_vllm_sgl_{metric}']:.1f}%",
+            f"{row[f'gap_vllm_trt_{metric}']:.1f}%"
         ]
         table.add_row(*values)
 
@@ -142,7 +155,6 @@ def display_rich_table(df, results_dir):
 
     # Print CSV for Easy Plotting
     from io import StringIO
-    import csv
 
     output = StringIO()
     df.to_csv(output, index=False)
