@@ -5,26 +5,45 @@ The goal for this repo is establish a set of commonly used benchmarks and workla
 
 # Latest Numbers
 
-As of April 16, 2025: H200, vLLM 0.8.4, SGL v0.4.5, TRT-LLM main
+As of April 18, 2025: H200, vLLM 0.8.4, SGL v0.4.5.post1, TRT-LLM main
+
+Nebius H200 (CPU Xeon 8468)
 ```
-                         Benchmark Comparison for vLLM (Output Tokens/s)
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
-┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃    SGL ┃     TRT ┃ vLLM/SGL Diff % ┃ vLLM/TRT Diff % ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
-│         1000 │          2000 │ 1092.31 │ 922.29 │ 1014.95 │           18.4% │            7.6% │
-│         5000 │          1000 │  791.24 │ 690.19 │  807.61 │           14.6% │           -2.0% │
-│        10000 │           500 │  393.69 │ 290.93 │  431.46 │           35.3% │           -8.8% │
-│        30000 │           100 │   29.45 │  20.63 │    0.00 │           42.8% │            0.0% │
-│     sharegpt │      sharegpt │ 1374.43 │ 779.83 │  735.60 │           76.2% │           86.8% │
-└──────────────┴───────────────┴─────────┴────────┴─────────┴─────────────────┴─────────────────┘
-                                       Model: deepseek-r1
+                          Benchmark Comparison for vLLM (Output Tokens/s)
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
+┃ Input Tokens ┃ Output Tokens ┃    vLLM ┃     SGL ┃ vLLM/SGL Gap % ┃ VLLM_EP ┃ vLLM/VLLM_EP Gap % ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
+│         1000 │          2000 │ 1500.11 │ 1437.85 │         +4.33% │ 1372.98 │             +9.26% │
+│         5000 │          1000 │ 1049.73 │  980.88 │         +7.02% │  830.49 │            +26.40% │
+│        10000 │           500 │  497.91 │  439.94 │        +13.18% │  356.38 │            +39.71% │
+│        30000 │           100 │   30.62 │   34.54 │        -11.35% │   26.83 │            +14.10% │
+│     sharegpt │      sharegpt │ 1512.76 │  999.28 │        +51.38% │ 1487.22 │             +1.72% │
+└──────────────┴───────────────┴─────────┴─────────┴────────────────┴─────────┴────────────────────┘
+                                         Model: deepseek-r1
+```
+
+DGX H200 (CPU Xeon 8480C)
+```
+                                  Benchmark Comparison for vLLM (Output Tokens/s)                                   
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃              ┃       Output ┃         ┃        ┃ vLLM/SGL Gap ┃         ┃  vLLM/TRT Gap ┃         ┃ vLLM/VLLM_EP ┃
+┃ Input Tokens ┃       Tokens ┃    vLLM ┃    SGL ┃            % ┃     TRT ┃             % ┃ VLLM_EP ┃        Gap % ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│         1000 │         2000 │ 1145.36 │ 960.76 │      +19.21% │ 1602.40 │       -28.52% │ 1086.94 │       +5.37% │
+│         5000 │         1000 │  853.46 │ 799.91 │       +6.69% │ 1039.03 │       -17.86% │  793.69 │       +7.53% │
+│        10000 │          500 │  446.90 │ 383.09 │      +16.66% │  424.69 │        +5.23% │  395.92 │      +12.88% │
+│        30000 │          100 │   37.31 │  34.22 │       +9.03% │   32.47 │       +14.89% │   29.44 │      +26.74% │
+│     sharegpt │     sharegpt │ 1380.59 │ 996.01 │      +38.61% │ 1565.39 │       -11.81% │ 1375.64 │       +0.36% │
+└──────────────┴──────────────┴─────────┴────────┴──────────────┴─────────┴───────────────┴─────────┴──────────────┘
+                                                 Model: deepseek-r1    
 ```
 
 Flags:
 * Benchmark: 50 queries for fixed length, 500 for sharegpt. 10 qps for a fast ramp up.
-* vLLM: `--enable-expert-parallel`, `VLLM_USE_FLASHINFER_SAMPLER=1`.
-* SGL: `--enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8`, `SGL_ENABLE_JIT_DEEPGEMM=1`. (DP and DeepEP are also attempted, see LOG.md)
-* TRT-LLM: `--ep_size 8 --kv_cache_free_gpu_memory_fraction 0.8 --max_batch_size 50 --max_num_tokens 11000`.
+* vLLM: `VLLM_USE_FLASHINFER_SAMPLER=1`.
+  * vLLM\_EP: `--enable-expert-parallel`
+* SGL: `--enable-dp-attention --dp-size 8`, `SGL_ENABLE_JIT_DEEPGEMM=1`. (DP and DeepEP are also attempted, see LOG.md)
+* TRT-LLM: complicated. See `trt.md`. TL;DR: overlap scheduler, ep8, tp8.
 
 # Usage
 * All the commands are defined in `Justfile`.
