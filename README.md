@@ -24,7 +24,7 @@ Nebius H200 (CPU Xeon 8468)
 
 DGX H200 (CPU Xeon 8480C)
 ```
-                                  Benchmark Comparison for vLLM (Output Tokens/s)                                   
+                                  Benchmark Comparison for vLLM (Output Tokens/s)
 ┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━┓
 ┃              ┃       Output ┃         ┃        ┃ vLLM/SGL Gap ┃         ┃  vLLM/TRT Gap ┃         ┃ vLLM/VLLM_EP ┃
 ┃ Input Tokens ┃       Tokens ┃    vLLM ┃    SGL ┃            % ┃     TRT ┃             % ┃ VLLM_EP ┃        Gap % ┃
@@ -35,7 +35,7 @@ DGX H200 (CPU Xeon 8480C)
 │        30000 │          100 │   37.31 │  34.22 │       +9.03% │   32.47 │       +14.89% │   29.44 │      +26.74% │
 │     sharegpt │     sharegpt │ 1380.59 │ 996.01 │      +38.61% │ 1565.39 │       -11.81% │ 1375.64 │       +0.36% │
 └──────────────┴──────────────┴─────────┴────────┴──────────────┴─────────┴───────────────┴─────────┴──────────────┘
-                                                 Model: deepseek-r1    
+                                                 Model: deepseek-r1
 ```
 
 Flags:
@@ -43,6 +43,8 @@ Flags:
 * vLLM: `VLLM_USE_FLASHINFER_SAMPLER=1`.
   * vLLM\_EP: `--enable-expert-parallel`
 * SGL: `--enable-dp-attention --dp-size 8`, `SGL_ENABLE_JIT_DEEPGEMM=1`. (DP and DeepEP are also attempted, see LOG.md)
+  * Important: SGLang needs to warm up the DEEPGEMM JIT kernels. So the very first run will be slow.
+    You need to run the full sweep once, discard the result, and run the sweep again to get the final result.
 * TRT-LLM: complicated. See `trt.md`. TL;DR: overlap scheduler, ep8, tp8.
 
 # Usage
