@@ -47,6 +47,8 @@ Flags:
     You need to run the full sweep once, discard the result, and run the sweep again to get the final result.
 * TRT-LLM: complicated. See `trt.md`. TL;DR: overlap scheduler, ep8, tp8.
 
+Note: if you are looking for older results and instructions, please browse the git tag for the corresponding date.
+
 # Usage
 * All the commands are defined in `Justfile`.
 * The environment should be exactly reproducible by using `uv`.
