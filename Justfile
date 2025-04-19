@@ -1,9 +1,10 @@
 import 'scripts/utils.just'
+set dotenv-load
 
 UV_PYTHON_VERSION := "3.11"
 
 # Model configurations
-DEEPSEEK_R1_PATH := "deepseek-ai/DeepSeek-R1"
+DEEPSEEK_R1_PATH := env_var_or_default("DEEPSEEK_R1_PATH", "deepseek-ai/DeepSeek-R1")
 DEEPSEEK_R1_TP := "8"
 
 QWQ_32B_PATH := "Qwen/QwQ-32B"
@@ -37,7 +38,7 @@ uvx-vllm +args:
 uvx-sgl +args:
   #!/usr/bin/env bash
   UV_PYTHON={{UV_PYTHON_VERSION}} uv run --with setuptools \
-    --with 'sglang[all]==0.4.5' \
+    --with 'sglang[all]==0.4.5.post1' \
     --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer-python \
     {{args}}
 
@@ -49,7 +50,8 @@ _serve-vllm model_path tp="1":
   VLLM_SERVE_ARGS="--trust-remote-code --no-enable-prefix-caching --disable-log-requests"
 
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
-    VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS} --enable-expert-parallel"
+    # No EP for vLLM v0.8.4 given on EP for SGLang v0.4.5.post1 as well.
+    VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS}"
   else
     VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS} --load-format dummy"
   fi
@@ -61,11 +63,11 @@ _serve-vllm model_path tp="1":
 # Base recipes for serving SGLang
 _serve-sgl model_path tp="1":
   #!/usr/bin/env bash
-  SGL_SERVE_ARGS="--trust-remote-code --enable-flashinfer-mla --disable-radix-cache"
+  SGL_SERVE_ARGS="--trust-remote-code --disable-radix-cache"
 
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
-    # Flag guide: https://github.com/sgl-project/sglang/tree/main/benchmark/deepseek_v3
-    SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --enable-torch-compile --torch-compile-max-bs 8 --expert-parallel-size 8"
+    # https://github.com/sgl-project/sglang/issues/5514
+    SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --enable-dp-attention --dp-size 8"
   else
     SGL_SERVE_ARGS="${SGL_SERVE_ARGS} --load-format dummy"
   fi
@@ -148,7 +150,7 @@ serve backend="vllm" model="deepseek-r1":
 
 # Run a single benchmark scenario
 [group('benchmark')]
-run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
+run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000" tag="" harness="":
     #!/usr/bin/env bash
     set -ex
 
@@ -167,34 +169,58 @@ run-scenario backend="vllm" model="deepseek-r1" lengths="1000,1000":
     INPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f1)
     OUTPUT_LEN=$(echo "{{lengths}}" | cut -d',' -f2)
 
-    if [[ "{{lengths}}" == "sharegpt" ]]; then
-      uv run --with-requirements requirements-benchmark.txt \
-        vllm-benchmarks/benchmarks/benchmark_serving.py \
-        --model ${MODEL_PATH} \
-        --dataset-name sharegpt --ignore-eos \
-        --dataset-path vllm-benchmarks/benchmarks/sharegpt.json \
-        --num-prompts 500 \
-        --request-rate 10 \
-        --save-result \
-        --result-dir results/{{model}} \
-        --result-filename {{backend}}-sharegpt.json
-    else
-      uv run --with-requirements requirements-benchmark.txt \
-          vllm-benchmarks/benchmarks/benchmark_serving.py \
-          --model ${MODEL_PATH} \
-          --dataset-name random --ignore-eos \
+    if [[ "{{harness}}" == "sgl" ]]; then
+      # Note there is not result saving here, so we tee the result to a file.
+      mkdir -p results/{{model}}
+      if [[ "{{lengths}}" == "sharegpt" ]]; then
+        just uvx-sgl python -m sglang.bench_serving \
+          --port 8000 \
+          --backend sglang-oai \
+          --num-prompts 500 \
+          --request-rate 10 \
+          --dataset-name sharegpt \
+          --dataset-path vllm-benchmarks/benchmarks/sharegpt.json | tee results/{{model}}/sgl-bench_serving-{{backend}}-sharegpt-{{tag}}.log
+      else
+        just uvx-sgl python -m sglang.bench_serving \
+          --port 8000 \
+          --backend sglang-oai \
           --num-prompts 50 \
           --request-rate 10 \
+          --dataset-name random \
           --random-input-len ${INPUT_LEN} \
           --random-output-len ${OUTPUT_LEN} \
+          --random-range-ratio 1 | tee results/{{model}}/sgl-bench_serving-{{backend}}-${INPUT_LEN}-${OUTPUT_LEN}-{{tag}}.log
+      fi
+    else
+      if [[ "{{lengths}}" == "sharegpt" ]]; then
+        uv run --with-requirements requirements-benchmark.txt \
+          vllm-benchmarks/benchmarks/benchmark_serving.py \
+          --model ${MODEL_PATH} \
+          --dataset-name sharegpt --ignore-eos \
+          --dataset-path vllm-benchmarks/benchmarks/sharegpt.json \
+          --num-prompts 500 \
+          --request-rate 10 \
           --save-result \
           --result-dir results/{{model}} \
-          --result-filename {{backend}}-${INPUT_LEN}-${OUTPUT_LEN}.json
+          --result-filename {{backend}}-sharegpt-{{tag}}.json
+      else
+        uv run --with-requirements requirements-benchmark.txt \
+            vllm-benchmarks/benchmarks/benchmark_serving.py \
+            --model ${MODEL_PATH} \
+            --dataset-name random --ignore-eos \
+            --num-prompts 50 \
+            --request-rate 10 \
+            --random-input-len ${INPUT_LEN} \
+            --random-output-len ${OUTPUT_LEN} \
+            --save-result \
+            --result-dir results/{{model}} \
+            --result-filename {{backend}}-${INPUT_LEN}-${OUTPUT_LEN}-{{tag}}.json
+      fi
     fi
 
 # Run benchmark sweeps for a specific backend and model
 [group('benchmark')]
-run-sweeps backend="vllm" model="deepseek-r1":
+run-sweeps backend="vllm" model="deepseek-r1" tag="" harness="":
   #!/usr/bin/env bash
   set -ex
 
@@ -204,7 +230,7 @@ run-sweeps backend="vllm" model="deepseek-r1":
       continue
     fi
 
-    just run-scenario {{backend}} {{model}} ${pair}
+    just run-scenario {{backend}} {{model}} ${pair} {{tag}} {{harness}}
 
     sleep 6
   done
