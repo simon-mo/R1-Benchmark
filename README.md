@@ -5,7 +5,7 @@ The goal for this repo is establish a set of commonly used benchmarks and workla
 
 # Latest Numbers
 
-As of April 18, 2025: H200, vLLM 0.8.4, SGL v0.4.5.post1, TRT-LLM main
+As of April 18, 2025: H200, vLLM 0.8.4, SGL v0.4.5.post1, TRT-LLM main. Data in `saved-results/vllm-0.8.4/deepseek-r1/`.
 
 Nebius H200 (CPU Xeon 8468)
 ```
