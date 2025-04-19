@@ -28,14 +28,15 @@ Simon:
     ```
     SGL_ENABLE_JIT_DEEPGEMM=1 python3 -m sglang.launch_server --model deepseek-ai/DeepSeek-V3 --tp 8 --trust-remote-code --enable-dp-attention --dp-size 8
     ```
+    * ^ This means we have removed flash mla and expert parallel flag.
     * Given this I should probably turn off EP in vLLM for direct comparison.
     * I still ended up setting `--disable-radix-cache` as a general way to prevent prefix caching. So the benchmark script doesn't need to include flush cache. This is the only difference from what I am running as compared to @zhyncs's command.
-    * I'm seeing `[2025-04-18 13:24:29 TP0] DeepGEMM JIT code generation <gemm_fp8_fp8_bf16_nt>: M=7138, N=576, K=7168. Please wait.` not just in the startup, but also as requests arrive in different workloads! So I think I need to run the full sweep once, discard the result,and run the sweep again to get the final result. Otherwise the output throughput is halved: 639.78 for 1000/2000 case instead of 1k+ toks/s.
-* SGLang harness: I also implemented a way to use SGLang's bench_serving harness. Use it as the last argument in `just run-sweeps` or `just run-scenario`.
+    * I'm seeing `[2025-04-18 13:24:29 TP0] DeepGEMM JIT code generation <gemm_fp8_fp8_bf16_nt>: M=7138, N=576, K=7168. Please wait.` not just in the startup, but also as requests arrive in different workloads! So I think I need to run the full sweep once, discard the result, and run the sweep again to get the final result. Otherwise the output throughput is halved: 639.78 for 1000/2000 case instead of 1k+ toks/s.... Ah! It's cached on disk. So subsequent runs don't need double sweep.
+* SGLang harness: I also implemented a way to use SGLang's bench_serving harness. Use it as the last argument in `just run-sweeps` or `just run-scenario`. I mostly used to diagnose the reproducibility issue. But turns out it is the CPU issue below.
 * I spent some times trying to figure out why SGLang's number is not reproducible. Turns out Berkeley's DGX H200 has Intel Xeon 8480C while Nebius's H200 has 8468, which clocks differently (8468 is faster). I will run a subset of tests in Nebius's H200 (it's $$$ to run them and I don't want to build TRT container again).
 * Ok planning a final set of results for today:
-  * Nebius's H200: [vLLM, vLLM-No-EP, SGL] x [vLLM harness, SGLang harness]
-  * Berkeley's H200: [vLLM-No-EP, SGL, TRT-LLM] on vLLM harness
+  * Nebius's H200: [vLLM, vLLM-EP, SGL]
+  * Berkeley's H200: [vLLM, vLLM-EP, SGL, TRT-LLM]
 
 ## 04/16/2025
 Simon:

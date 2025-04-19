@@ -20,7 +20,7 @@ def extract_info_from_filename(filename):
 
     backend = match.group(1)
     tag = match.group(4)
-    if tag is not None and tag != "default":
+    if tag is not None and tag != "default" and tag != "":
         backend = f"{backend}-{tag}"
 
     if match.group(2) and match.group(3):

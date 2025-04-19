@@ -51,6 +51,7 @@ _serve-vllm model_path tp="1":
 
   if [[ "{{model_path}}" == *"DeepSeek-R1"* ]]; then
     # No EP for vLLM v0.8.4 given on EP for SGLang v0.4.5.post1 as well.
+    # VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS} --enable-expert-parallel"
     VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS}"
   else
     VLLM_SERVE_ARGS="${VLLM_SERVE_ARGS} --load-format dummy"
